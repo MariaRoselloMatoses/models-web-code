@@ -1,0 +1,98 @@
+---
+title: "faltantes"
+author: "Gonzalo Candel"
+date: "16/4/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+library(ggplot2)
+setwd("C:/Users/Gonzalo/Documents/CURSO3/PRIII")
+datos = read_excel("panel_todo.xlsx")
+```
+
+```{r}
+a = colSums(is.na(datos))/nrow(datos)*100
+d = data.frame(var=names(a),faltantes=a)
+ggplot(data=d,aes(x=faltantes,y=reorder(var,faltantes))) + geom_point() + theme(axis.title.y = element_blank(), axis.text.y = element_blank()) + ggtitle("Todos")
+d2 = d[which(d$faltantes<45),]
+ggplot(data=d2,aes(x=faltantes,y=reorder(var,faltantes))) + geom_point()
+```
+```{r}
+tener = d2$var
+quitar = c("...1","Unnamed: 0","Happiness Rank","Upper Confidence Interval","Lower Confidence Interval","Quality healthcare - Dissatisfied","Quality healthcare - DK","Preserve enviroment - Dissatisfied","Preserve enviroment - DK","Quality water - Dissatisfied","Quality air - Dissatisfied","Quality air - DK","Quality water - Dissatisfied","Quality water - DK","Treated respect - Dissatisfied","Treated respect - DK","City Economy - Don't know")
+```
+
+```{r}
+library(dplyr)
+datos2 = datos %>% select(tener,-quitar)
+```
+
+```{r}
+library(xlsx)
+write.xlsx(datos2,"p2.xlsx")
+```
+
+
+```{r}
+dd = datos[which(datos$year==2015),]
+a = colSums(is.na(dd))/nrow(dd)*100
+d3 = data.frame(var=names(a),faltantes=a)
+g1 = ggplot(data=d3,aes(x=faltantes,y=reorder(var,faltantes))) + geom_point() + theme(axis.title.y = element_blank(), axis.text.y = element_blank()) + ggtitle("2015")
+
+dd = datos[which(datos$year==2016),]
+a = colSums(is.na(dd))/nrow(dd)*100
+d3 = data.frame(var=names(a),faltantes=a)
+g2 = ggplot(data=d3,aes(x=faltantes,y=reorder(var,faltantes))) + geom_point() + theme(axis.title.y = element_blank(), axis.text.y = element_blank()) + ggtitle("2016")
+
+dd = datos[which(datos$year==2017),]
+a = colSums(is.na(dd))/nrow(dd)*100
+d3 = data.frame(var=names(a),faltantes=a)
+g3 = ggplot(data=d3,aes(x=faltantes,y=reorder(var,faltantes))) + geom_point() + theme(axis.title.y = element_blank(), axis.text.y = element_blank()) + ggtitle("2017")
+
+dd = datos[which(datos$year==2018),]
+a = colSums(is.na(dd))/nrow(dd)*100
+d3 = data.frame(var=names(a),faltantes=a)
+g4 = ggplot(data=d3,aes(x=faltantes,y=reorder(var,faltantes))) + geom_point() + theme(axis.title.y = element_blank(), axis.text.y = element_blank()) + ggtitle("2018")
+
+dd = datos[which(datos$year==2019),]
+a = colSums(is.na(dd))/nrow(dd)*100
+d3 = data.frame(var=names(a),faltantes=a)
+g5 = ggplot(data=d3,aes(x=faltantes,y=reorder(var,faltantes))) + geom_point() + theme(axis.title.y = element_blank(), axis.text.y = element_blank()) + ggtitle("2019")
+
+dd = datos[which(datos$year==2020),]
+a = colSums(is.na(dd))/nrow(dd)*100
+d3 = data.frame(var=names(a),faltantes=a)
+g6 = ggplot(data=d3,aes(x=faltantes,y=reorder(var,faltantes))) + geom_point() + theme(axis.title.y = element_blank(), axis.text.y = element_blank()) + ggtitle("2020")
+
+g1
+g2
+g3
+g4
+g5
+g6
+```
+
+
+
+```{r}
+library(grid)
+grid.newpage()
+pushViewport(viewport(layout=grid.layout(6,1)))
+r = 1
+
+for (i in 1:unique(datos$Year)){
+  dd = datos[which(datos$Year==i),]
+  a = colSums(is.na(dd))/nrow(dd)*100
+  d3 = data.frame(var=names(a),faltantes=a)
+  g = ggplot(data=d3,aes(x=faltantes,y=reorder(var,faltantes))) + geom_col() + theme(axis.title.y = element_blank(), axis.text.y = element_blank())
+  print(g, vp = viewport(layout.pos.row=r, layout.pos.col=1))
+  r = r+1
+}
+```
+

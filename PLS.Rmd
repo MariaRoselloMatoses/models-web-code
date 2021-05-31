@@ -1,0 +1,218 @@
+---
+title: "PLS Final"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+```
+
+#Libraries
+
+```{r }
+
+library(ropls)
+library(caret)
+library(pls)
+
+```
+
+#Data
+
+```{r }
+datos = read.csv("2020_sin_Na.csv")
+datos = datos[,-1]
+head(datos)
+
+```
+
+#Data Separation
+
+```{r }
+
+colnames(datos)
+regresores= datos[,-c(1,50)]
+respuesta = data.frame(datos[,"Happiness.Score"])
+
+regresores2 = datos[,-c(1,31,50)]
+respuesta2 = data.frame(datos[,c("Happiness.Score")])
+colnames(respuesta) <- 'Happiness.Score'
+
+head(regresores, n = 4)
+
+```
+
+
+
+
+# PLS 1rst
+
+
+```{r }
+mypls = opls(x = regresores, y = as.matrix(respuesta), predI = 2, crossvalI = 10, scaleC = "standard", permI = 20)
+
+```
+
+
+```{r }
+modelDF = mypls@modelDF
+component = as.data.frame(rownames(modelDF)) 
+colnames(component) = "Component"  
+modelDF = cbind(modelDF, component)
+ggplot(modelDF, aes(x = Component, y = R2Y)) + geom_col(fill = "dodgerblue") + theme_bw()
+
+```
+
+# Variable Importance in Projection (VIP)
+
+```{r }
+
+Pesos = mypls@weightMN
+contributions <- tibble::rownames_to_column(as.data.frame(Pesos),"VALUE")
+p1 = contributions[-3]
+p2 = contributions[-2]
+
+Vip = sort(getVipVn(mypls), decreasing = T)
+as.data.frame(Vip)
+Vip_graficos = tibble::rownames_to_column(as.data.frame(Vip),"VALUE")
+set = subset(Vip_graficos, Vip_graficos > 1)
+
+
+Vip_1 = subset(Vip_graficos, Vip > 1)
+variables = unlist(Vip_1$VALUE)
+
+
+head(sort((p1$p1), decreasing = TRUE))
+tail(p1)
+
+```
+
+# Residuals
+
+```{r }
+miT = mypls@scoreMN
+miP = mypls@loadingMN
+miE = scale(regresores) - miT%*%t(miP) 
+miDist = rowSums(miE^2)
+
+misScores = mypls@scoreMN
+misLoadings = mypls@loadingMN
+misWeights = mypls@weightMN
+varT = apply(misScores, 2, var)
+miT2 = colSums(t(misScores**2) / varT)
+N = nrow(regresores)
+A = 2
+F95 = A*(N**2 - 1)/(N*(N - A)) * qf(0.95, A, N-A)
+F99 = A*(N**2 - 1)/(N*(N - A)) * qf(0.99, A, N-A)
+plot(1:length(miT2), miT2, type = "l", xlab = "Observations", ylab = "T2",
+     main = "PLS: T2-Hotelling")
+abline(h = F95, col = "orange", lty = 2, lwd = 2)
+abline(h = F99, col = "red3", lty = 2, lwd = 2)
+
+atipica = which(miT2 > F95)
+
+```
+
+```{r }
+datos_pls = datos[,variables]
+
+mypls_final = opls(x = datos_pls, y = as.matrix(respuesta), predI = 2, crossvalI = 10, scaleC = "standard", permI = 20)
+
+Pesos = mypls_final@weightMN
+contributions <- tibble::rownames_to_column(as.data.frame(Pesos),"VALUE")
+p1 = contributions[-3]
+p2 = contributions[-2]
+
+```
+
+
+
+
+# Residuals
+
+```{r }
+miT = mypls_final@scoreMN
+miP = mypls_final@loadingMN
+miE = scale(regresores[variables]) - miT%*%t(miP) 
+miDist = rowSums(miE^2)
+
+misScores = mypls_final@scoreMN
+misLoadings = mypls_final@loadingMN
+misWeights = mypls_final@weightMN
+varT = apply(misScores, 2, var)
+miT2 = colSums(t(misScores**2) / varT)
+N = nrow(regresores[variables])
+A = 2
+F95 = A*(N**2 - 1)/(N*(N - A)) * qf(0.95, A, N-A)
+F99 = A*(N**2 - 1)/(N*(N - A)) * qf(0.99, A, N-A)
+plot(1:length(miT2), miT2, type = "l", xlab = "Observations", ylab = "T2",
+     main = "PLS: T2-Hotelling")
+abline(h = F95, col = "orange", lty = 2, lwd = 2)
+abline(h = F99, col = "red3", lty = 2, lwd = 2)
+
+atipica = which(miT2 > F95)
+
+```
+
+
+```
+
+
+
+
+```{r }
+
+
+
+
+```
+
+
+
+
+```{r }
+
+
+
+
+```
+
+
+
+
+```{r }
+
+
+
+
+```
+
+
+
+
+```{r }
+
+
+
+
+```
+
+
+
+
+```{r }
+
+
+
+
+```
+
+
+
+
+```{r }
+
+
+
+
+```

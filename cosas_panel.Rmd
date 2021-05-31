@@ -1,0 +1,163 @@
+---
+title: "panel"
+author: "Gonzalo Candel"
+date: "23/4/2021"
+output: html_document
+---
+# PANEL DATA REGRESION BY USING PRINCIPAL INDEXES
+
+## 0. REFERENCES
+http://www.urfie.net/read/index.html#page/5 
+
+https://stats.stackexchange.com/questions/142091/how-to-cope-with-serial-correlation-and-time-effects-in-a-panel-data-model-in-r 
+https://www.econometrics-with-r.org/6-3-mofimr.html
+
+https://www.researchgate.net/post/How_can_I_correct_heteroscedasticity_from_my_Random_Effect_Two_way_Panel_Regression_Model-if_the_log_transformation_of_IV_does_not_help 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. LOADING DATA AND LIBRARIES
+
+```{r,warning=FALSE,message=FALSE}
+library(readxl)
+library(dplyr)
+library(plm)
+library(sjPlot)
+library(plotly)
+library(broom)
+library(reshape2)
+library(tidyr)
+library(corrplot)
+setwd("C:/Users/Gonzalo/Documents/CURSO3/PRIII")
+#panel = read_excel("integrada_sinNa.xlsx")
+panel = read_excel("integrada2.xlsx")
+datos_kaggle = panel %>% select(2,3,4,5,6,7,8,9,10,"Family")
+#datos_kaggle = panel[,2:10]
+colnames(datos_kaggle) = c("country","hpscore","loggdp","health","freedom","trust","generosity","dystopia","year","family")
+```
+
+## 2. CHECKING FOR CORRELATION IN INDEXES AND FIRST LINEAR MODEL (POOLING)
+
+```{r}
+M = cor(datos_kaggle[,c(2,3,4,5,6,7,8,10)])
+corrplot(M,method="number")
+panel_datos_kaggle = pdata.frame(datos_kaggle,index=c("country","year"))
+pool = plm(hpscore ~ loggdp + health + freedom + trust + generosity + dystopia + family, data=panel_datos_kaggle,model="pooling")
+summary(pool)
+```
+Graficking the weights of the model and the effect of the combination of both weigths and input data:
+```{r}
+#lm = lm(cnt ~ .,data=days2)
+
+broom::tidy(pool) %>% 
+  mutate(term = forcats::fct_reorder(term, estimate)) %>% 
+  plot_ly(x = ~estimate, y = ~term,hoverinfo="none") %>%
+  add_markers(error_x = ~list(value = std.error),color = I("black"))
+
+coefs = pool$coefficients[2:length(pool$coefficients)]
+effects = panel_datos_kaggle %>% select(names(coefs))
+variables = names(coefs)
+for (i in (1:length(coefs))){
+  var = variables[i]
+  effects[,var] = coefs[i]*panel_datos_kaggle[,var]}
+
+effects2 = melt(effects,id.vars=0)
+g2 = ggplot(data=effects2,aes(x=value,y=reorder(variable,value, FUN = mean, na.rm=TRUE))) + stat_boxplot(geom ='errorbar',colour="dodgerblue2")+ geom_boxplot(fill="lightblue",colour = "blue",outlier.colour = "dodgerblue2")+ylab("reoreder(variable,value)") 
+g2
+```
+
+```{r}
+#bonf = pairwise.t.test(panel_datos_kaggle$hpscore,panel_datos_kaggle$year,p.adj="none")
+#bonf
+```
+
+### 2.1. WITHIN INDIVIDUAL EFFECTS MODEL
+Conclusion: Not meaningful effects as the model R2 is practically 0.
+```{r}
+dg = plm(hpscore ~ loggdp + health + freedom + trust + generosity + dystopia + family, data=panel_datos_kaggle,model="within",effect="individual")
+summary(dg)
+#summary(fixef(dg,type="level"))
+```
+### 2.2. RANDOM EFFECTS MODEL
+
+```{r}
+rd = plm(hpscore ~ loggdp + health + freedom + trust + generosity + dystopia + family, data=panel_datos_kaggle,model="random")
+summary(rd)
+```
+#### DIFFERENT TESTS OVER THE MODELS DONE BEFORE
+```{r}
+plmtest(pool,type=c("bp")) #sí que hay efectos de panel
+```
+
+```{r}
+pFtest(dg,pool) #hay diferencias significativas entre países
+```
+
+```{r}
+phtest(dg,rd) #hay diferencias significativas entre países
+```
+### 2.3. TEMPORAL EFFECTS MODEL (WITHIN)
+```{r}
+dg2 = plm(hpscore ~ loggdp + health + freedom + trust + generosity + dystopia + family, data=panel_datos_kaggle,model="within",effect="time")
+summary(dg2)
+summary(fixef(dg2,type="level"))
+```
+```{r}
+pFtest(dg2,pool)
+```
+```{r,warning=FALSE,message=FALSE}
+library(lmtest)
+bptest(hpscore ~ loggdp + health + freedom + trust + generosity + dystopia + factor(year),data=panel_datos_kaggle,studentize = F) #existe heterocesaticidad
+```
+```{r}
+coeftest(dg2, vcovHC) #coeficientes robustos heterocedasticidad
+```
+
+```{r}
+a = list(title="Feature")
+b = list(title="Weight estimate")
+plt = broom::tidy(coeftest(dg2,vcovHC)) %>% 
+  mutate(term = forcats::fct_reorder(term, estimate)) %>% 
+  plot_ly(x = ~estimate, y = ~term) %>%
+  add_markers(error_x = ~list(value = std.error),color = I("black")) %>% layout(title="Weight plot",xaxis=b,yaxis=a) 
+plt
+#broom::tidy(dg2) %>% 
+#  mutate(term = forcats::fct_reorder(term, estimate)) %>% 
+#  plot_ly(x = ~estimate, y = ~term,hoverinfo="none") %>%
+#  add_markers(error_x = ~list(value = std.error),color = I("black"))
+
+coefs = dg2$coefficients
+effects = panel_datos_kaggle %>% select(names(coefs))
+variables = names(coefs)
+for (i in (1:length(coefs))){
+  var = variables[i]
+  effects[,var] = coefs[i]*panel_datos_kaggle[,var]}
+
+effects2 = melt(effects,id.vars=0)
+g2 = ggplot(data=effects2,aes(x=value,y=reorder(variable,value, FUN = mean, na.rm=TRUE))) + stat_boxplot(geom ='errorbar',colour="dodgerblue2")+ geom_boxplot(fill="lightblue",colour = "blue",outlier.colour = "dodgerblue2")+ylab("Feature")+xlab("Feature effect") + labs(title="Effect plot")
+g2
+```
+```{r}
+htmlwidgets::saveWidget(as_widget(plt), "weightplot.html") #exporting weightplot as html (plotly)
+```
+
+
+
+```{r}
+predict(dg2,panel_datos_kaggle)
+```
+
+```{r}
+library(ggeffects)
+ggpredict(dg2)
+```
+```{r}
+library(caret)
+postResample(predict(pool,datos_kaggle),datos_kaggle$hpscore)
+```
+```{r}
+
+```
+
